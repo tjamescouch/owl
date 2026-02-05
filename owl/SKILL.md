@@ -1,12 +1,12 @@
 ---
 name: owl
-description: Terraform products from natural language specs
+description: Build products from natural language specs
 version: 0.1.0
 ---
 
 # owl
 
-Natural language terraform for products. Describe what you want in markdown, run /owl apply, and it gets built.
+Describe what you want in markdown, run /owl apply, and it gets built.
 
 ## Commands
 
@@ -14,12 +14,11 @@ Natural language terraform for products. Describe what you want in markdown, run
 
 Implement the specs in the current directory.
 
-1. Read product.md to understand what we are building
+1. Read product.md to understand what we're building
 2. Follow markdown links to gather component and behavior specs
 3. Read constraints.md for rules to follow
 4. Implement each component one at a time
 5. Verify each matches its spec before moving on
-6. Save state to .owl/state.json when done
 
 Rules:
 - Never modify spec files
@@ -31,21 +30,9 @@ Rules:
 
 Compare specs to codebase. Report:
 - What is specified but missing
-- What exists but is not specified  
+- What exists but is not specified
 - What contradicts the spec
 
 ### /owl plan
 
 Show what would change without implementing.
-
-## File Structure
-
-project/
-  product.md        - root spec
-  constraints.md    - global rules
-  components/       - parts of the system
-  behaviors/        - cross-cutting flows
-
-## Example
-
-Create product.md describing what you want, then run /owl apply.

@@ -1,42 +1,42 @@
 # owl
 
-a natural language declarative specification format. like terraform, but you describe what you want in plain english and an agent builds it.
+a natural language declarative specification format for software.
 
-## structure
+describe what you want in markdown. an agent builds it.
 
-```
-owl/           language and layout specification
-todo-owl/      example: a todo app spec written in owl
-todo/          example: implementation built from todo-owl
-```
-
-## how it works
-
-1. write a spec in markdown (product.md, components/, constraints.md)
-2. agent reads spec, compares to codebase
-3. agent builds what's missing
-
-## spec format
+## quick start
 
 ```
 project/
-├── product.md          # what is this, links to components
-├── components/
-│   ├── api.md          # backend spec
-│   └── web.md          # frontend spec
-└── constraints.md      # global rules
+├── product.md        # what you're building
+├── components/       # parts of the system
+│   ├── api.md
+│   └── web.md
+└── constraints.md    # rules to follow
 ```
+
+point an agent at the directory. it reads the spec, compares to reality, builds what's missing.
+
+## example
+
+this repo contains a working example:
+
+- `todo-owl/` - owl spec for a todo app
+- `todo/` - implementation built from that spec
+
+## spec format
 
 see [owl/spec.md](owl/spec.md) for the full language specification.
 
 ## philosophy
 
-- **declarative**: describe desired state, not steps
-- **natural language**: no formal grammar, llm-parsed
-- **composable**: specs link to other specs
-- **diffable**: agent compares spec to codebase
-- **idempotent**: applying twice = applying once
+- **declarative**: describe what, not how
+- **natural language**: no grammar, llm-parsed
+- **composable**: specs link to specs
+- **idempotent**: apply twice = apply once
 
-## why
+## why "owl"
 
-because "draw two circles, then draw the rest of the owl" is actually a valid workflow now.
+"draw two circles, then draw the rest of the owl."
+
+you sketch the circles. agent finishes it.
