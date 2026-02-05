@@ -25,6 +25,7 @@ this repo contains working examples:
 |------|----------------|-------------|
 | `todo-owl/` | `todo/` | full-featured todo app (react + graphql) |
 | `poll-owl/` | `poll/` | instant polls (react + rest) |
+| `auditor-owl/` | `auditor/` | spec compliance checker (node cli) |
 
 ## auditor
 
