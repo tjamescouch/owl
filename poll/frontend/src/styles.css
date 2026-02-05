@@ -1,0 +1,175 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+h1 {
+  font-size: 1.8rem;
+  margin-bottom: 24px;
+  color: #333;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+  color: #666;
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+input[type="text"] {
+  padding: 12px 16px;
+  font-size: 1rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input[type="text"]:focus {
+  border-color: #667eea;
+}
+
+.question-input {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+button {
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #667eea;
+  color: white;
+  transition: opacity 0.2s;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.recent {
+  margin-top: 48px;
+}
+
+.recent-poll {
+  display: block;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  color: #333;
+  text-decoration: none;
+  transition: box-shadow 0.2s;
+}
+
+.recent-poll:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option {
+  position: relative;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.option.clickable {
+  cursor: pointer;
+}
+
+.option.clickable:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.option .bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: #667eea22;
+  transition: width 0.3s;
+}
+
+.option .text {
+  position: relative;
+  font-weight: 500;
+}
+
+.option .pct {
+  position: relative;
+  float: right;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.total {
+  margin-top: 16px;
+  color: #888;
+  text-align: center;
+}
+
+.share {
+  margin-top: 24px;
+}
+
+.share input {
+  width: 100%;
+  text-align: center;
+  color: #666;
+}
+
+.back {
+  display: block;
+  margin-top: 24px;
+  text-align: center;
+  color: #667eea;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
