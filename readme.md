@@ -17,12 +17,14 @@ project/
 
 point an agent at the directory. it reads the spec, compares to reality, builds what's missing.
 
-## example
+## examples
 
-this repo contains a working example:
+this repo contains working examples:
 
-- `todo-owl/` - owl spec for a todo app
-- `todo/` - implementation built from that spec
+| spec | implementation | description |
+|------|----------------|-------------|
+| `todo-owl/` | `todo/` | full-featured todo app (react + graphql) |
+| `poll-owl/` | `poll/` | instant polls (react + rest) |
 
 ## spec format
 
