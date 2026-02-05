@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -17,25 +18,48 @@ def hash_content(content: str) -> str:
     return hashlib.sha256(content.encode()).hexdigest()[:16]
 
 
-def find_specs(dir: Path) -> dict[str, Path]:
-    """gather all spec files from a project"""
-    specs = {}
-
+def find_spec(dir: Path) -> Path | None:
+    """locate product.md in directory"""
     product = dir / "product.md"
-    if product.exists():
-        specs["product"] = product
+    return product if product.exists() else None
 
-    constraints = dir / "constraints.md"
-    if constraints.exists():
-        specs["constraints"] = constraints
 
-    for subdir in ["components", "behaviors"]:
-        path = dir / subdir
-        if path.exists():
-            for f in path.glob("*.md"):
-                key = f"{subdir}/{f.stem}"
-                specs[key] = f
+def read_spec(path: Path) -> str:
+    """read single spec file"""
+    return path.read_text()
 
+
+def extract_links(content: str) -> list[str]:
+    """extract markdown links from content"""
+    pattern = r'\[([^\]]+)\]\(([^)]+\.md)\)'
+    return [match[1] for match in re.findall(pattern, content)]
+
+
+def gather_specs(dir: Path, root_spec: Path) -> dict[str, Path]:
+    """collect all linked specs starting from root"""
+    specs = {}
+    visited = set()
+
+    def visit(path: Path, key: str):
+        if path in visited or not path.exists():
+            return
+        visited.add(path)
+
+        # only follow links within project directory
+        try:
+            path.resolve().relative_to(dir.resolve())
+        except ValueError:
+            return
+
+        specs[key] = path
+        content = read_spec(path)
+
+        for link in extract_links(content):
+            link_path = (path.parent / link).resolve()
+            link_key = str(link_path.relative_to(dir)).replace(".md", "").replace("/", "/")
+            visit(link_path, link_key)
+
+    visit(root_spec, "product")
     return specs
 
 
@@ -59,7 +83,7 @@ def load_state(dir: Path) -> dict:
     state_file = dir / ".owl" / "state.json"
     if state_file.exists():
         return json.loads(state_file.read_text())
-    return {}
+    return {"components": {}, "behaviors": {}}
 
 
 def save_state(dir: Path, state: dict):
@@ -68,6 +92,87 @@ def save_state(dir: Path, state: dict):
     owl_dir.mkdir(exist_ok=True)
     state_file = owl_dir / "state.json"
     state_file.write_text(json.dumps(state, indent=2))
+
+
+def compute_spec_hash(specs: dict[str, Path]) -> str:
+    """compute hash of concatenated spec files"""
+    content = []
+    for key in sorted(specs.keys()):
+        content.append(specs[key].read_text())
+    return hash_content("".join(content))
+
+
+def get_stale_specs(hashes: dict[str, str], state: dict) -> list[str]:
+    """find specs that changed since last apply"""
+    stale = []
+    stored_hashes = state.get("hashes", {})
+    for key, h in hashes.items():
+        if key in stored_hashes and stored_hashes[key] != h:
+            stale.append(key)
+    return stale
+
+
+def categorize_specs(specs: dict[str, Path]) -> tuple[dict, dict]:
+    """split specs into components and behaviors"""
+    components = {}
+    behaviors = {}
+    for key, path in specs.items():
+        if key.startswith("components/"):
+            name = key.replace("components/", "")
+            components[name] = path
+        elif key.startswith("behaviors/"):
+            name = key.replace("behaviors/", "")
+            behaviors[name] = path
+    return components, behaviors
+
+
+def build_state(specs: dict[str, Path], hashes: dict[str, str]) -> dict:
+    """build state dict matching spec format"""
+    now = datetime.now(timezone.utc).isoformat()
+    components, behaviors = categorize_specs(specs)
+
+    state = {
+        "spec_hash": compute_spec_hash(specs),
+        "applied_at": now,
+        "owl_version": VERSION,
+        "components": {},
+        "behaviors": {},
+    }
+
+    for name in components:
+        key = f"components/{name}"
+        state["components"][name] = {
+            "status": "satisfied",
+            "spec_hash": hashes.get(key, ""),
+            "applied_at": now,
+        }
+
+    for name in behaviors:
+        key = f"behaviors/{name}"
+        state["behaviors"][name] = {
+            "status": "satisfied",
+            "spec_hash": hashes.get(key, ""),
+            "applied_at": now,
+        }
+
+    return state
+
+
+BROADCAST_CHANNEL = None
+
+
+def broadcast(msg: str):
+    """send update to agentchat channel if broadcasting enabled"""
+    if not BROADCAST_CHANNEL:
+        return
+    try:
+        subprocess.run(
+            ["node", "/Users/jamescouch/dev/claude/agentchat/bin/agentchat.js",
+             "send", "wss://agentchat-server.fly.dev", BROADCAST_CHANNEL, msg],
+            capture_output=True, timeout=5
+        )
+    except Exception:
+        pass  # don't fail owl if broadcast fails
 
 
 def run_claude(prompt: str, interactive: bool = False, auto_yes: bool = False) -> bool:
@@ -87,6 +192,31 @@ def run_claude(prompt: str, interactive: bool = False, auto_yes: bool = False) -
     except FileNotFoundError:
         print("error: claude cli not found", file=sys.stderr)
         print("install: https://docs.anthropic.com/en/docs/claude-code", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError:
+        return False
+
+
+def run_agentchat(prompt: str, dir: Path) -> bool:
+    """distribute work via agentchat"""
+    # agentchat executor coordinates multiple agents
+    cmd = ["claude", "-p", f"""you are owl coordinator. use agentchat to distribute this work.
+
+1. connect to agentchat
+2. post the task to #owl channel
+3. coordinate agents claiming components
+4. wait for completion
+
+working directory: {dir}
+
+task:
+{prompt}"""]
+
+    try:
+        subprocess.run(cmd, check=True)
+        return True
+    except FileNotFoundError:
+        print("error: claude cli not found", file=sys.stderr)
         sys.exit(1)
     except subprocess.CalledProcessError:
         return False
@@ -141,17 +271,11 @@ see [constraints.md](constraints.md)
     print("created product.md, constraints.md, components/, behaviors/")
 
 
-def cmd_status(dir: Path, specs: str, hashes: dict[str, str]):
+def cmd_status(dir: Path, specs_dict: dict[str, Path], specs: str, hashes: dict[str, str]):
     """compare spec to reality"""
     state = load_state(dir)
 
-    # check what's stale
-    stale = []
-    for key, h in hashes.items():
-        stored = state.get("hashes", {}).get(key)
-        if stored and stored != h:
-            stale.append(key)
-
+    stale = get_stale_specs(hashes, state)
     if stale:
         print(f"stale specs (changed since last apply): {', '.join(stale)}\n")
 
@@ -170,10 +294,10 @@ SPECS:
     run_claude(prompt)
 
 
-def cmd_plan(dir: Path, specs: str, hashes: dict[str, str]):
+def cmd_plan(dir: Path, specs_dict: dict[str, Path], specs: str, hashes: dict[str, str]):
     """show what would change"""
     state = load_state(dir)
-    spec_hash = hash_content(specs)
+    spec_hash = compute_spec_hash(specs_dict)
 
     if state.get("spec_hash") == spec_hash:
         print("spec unchanged since last apply.")
@@ -194,14 +318,26 @@ SPECS:
     run_claude(prompt)
 
 
-def cmd_apply(dir: Path, specs: str, hashes: dict[str, str], auto_yes: bool = False):
+def cmd_apply(dir: Path, specs_dict: dict[str, Path], specs: str, hashes: dict[str, str], auto_yes: bool = False, executor: str = "claude"):
     """build what's missing"""
     state = load_state(dir)
-    spec_hash = hash_content(specs)
+    spec_hash = compute_spec_hash(specs_dict)
 
-    if state.get("spec_hash") == spec_hash and state.get("status") == "satisfied":
+    if state.get("spec_hash") == spec_hash:
         print("spec already satisfied. nothing to apply.")
         print("use 'owl drift' to verify, or delete .owl/state.json to force re-apply.")
+        return
+
+    if executor == "human":
+        print("task list for manual execution:\n")
+        prompt = f"""you are owl. plan implementation from these specs for {dir}.
+
+create a numbered task list of what to implement.
+be specific about files and changes.
+
+SPECS:
+{specs}"""
+        run_claude(prompt)
         return
 
     prompt = f"""you are owl. implement these specs in {dir}.
@@ -215,22 +351,19 @@ rules:
 SPECS:
 {specs}"""
 
-    success = run_claude(prompt, interactive=True, auto_yes=auto_yes)
+    if executor == "agentchat":
+        success = run_agentchat(prompt, dir)
+    else:
+        success = run_claude(prompt, interactive=True, auto_yes=auto_yes)
 
     if success:
-        now = datetime.now(timezone.utc).isoformat()
-        state = {
-            "spec_hash": spec_hash,
-            "hashes": hashes,
-            "status": "satisfied",
-            "applied_at": now,
-            "owl_version": VERSION,
-        }
-        save_state(dir, state)
+        new_state = build_state(specs_dict, hashes)
+        save_state(dir, new_state)
         print(f"\nstate saved to .owl/state.json")
+        broadcast(f"owl apply complete - state saved")
 
 
-def cmd_drift(dir: Path, specs: str, hashes: dict[str, str]):
+def cmd_drift(dir: Path, specs_dict: dict[str, Path], specs: str, hashes: dict[str, str]):
     """check for divergence"""
     prompt = f"""you are owl. detect drift between specs and code in {dir}.
 
@@ -253,32 +386,41 @@ def main():
     )
     parser.add_argument("command", choices=["init", "status", "plan", "apply", "drift"])
     parser.add_argument("-d", "--dir", type=Path, default=Path.cwd(), help="project directory")
+    parser.add_argument("-s", "--spec", type=Path, default=None, help="spec file path")
+    parser.add_argument("-e", "--executor", choices=["claude", "agentchat", "human"], default="claude", help="executor to use")
     parser.add_argument("-y", "--yes", action="store_true", help="auto-approve apply")
+    parser.add_argument("-b", "--broadcast", type=str, metavar="CHANNEL", help="broadcast updates to agentchat channel")
     parser.add_argument("--version", action="version", version=f"owl {VERSION}")
 
     args = parser.parse_args()
     dir = args.dir.resolve()
 
+    global BROADCAST_CHANNEL
+    if args.broadcast:
+        BROADCAST_CHANNEL = args.broadcast
+        broadcast(f"owl {args.command} started in {dir.name}")
+
     if args.command == "init":
         cmd_init(dir)
         return
 
-    specs = find_specs(dir)
-    if not specs:
+    root = find_spec(dir)
+    if not root:
         print(f"error: no product.md found in {dir}", file=sys.stderr)
         print("run 'owl init' to create one", file=sys.stderr)
         sys.exit(1)
 
+    specs = gather_specs(dir, root)
     spec_content, hashes = read_specs(specs)
 
     if args.command == "status":
-        cmd_status(dir, spec_content, hashes)
+        cmd_status(dir, specs, spec_content, hashes)
     elif args.command == "plan":
-        cmd_plan(dir, spec_content, hashes)
+        cmd_plan(dir, specs, spec_content, hashes)
     elif args.command == "apply":
-        cmd_apply(dir, spec_content, hashes, args.yes)
+        cmd_apply(dir, specs, spec_content, hashes, args.yes, args.executor)
     elif args.command == "drift":
-        cmd_drift(dir, spec_content, hashes)
+        cmd_drift(dir, specs, spec_content, hashes)
 
 
 if __name__ == "__main__":
