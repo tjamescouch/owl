@@ -29,4 +29,5 @@ depends on:
 
 - never modifies spec files
 - follows links only within project directory
-- returns empty list if no specs found
+- returns empty dict if no specs found
+- warns on missing linked spec files
