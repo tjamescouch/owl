@@ -2,9 +2,10 @@
 
 ## language
 
-- bash for cli wrapper
-- keep it simple - owl is a thin layer over claude
-- no dependencies beyond standard unix tools + claude cli
+python 3.10+, no external dependencies.
+
+> note: owl specs are language-agnostic. the same spec could be implemented
+> in bash, rust, go, etc. multi-language support is future work.
 
 ## style
 

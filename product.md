@@ -4,6 +4,7 @@ natural language terraform for products. describe what you want, agent builds it
 
 ## components
 
+- [grammar](components/grammar.md) - the owl specification language
 - [cli](components/cli.md) - command line interface
 - [executor](components/executor.md) - runs specs against codebases
 - [parser](components/parser.md) - reads and links spec files
