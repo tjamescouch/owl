@@ -101,26 +101,38 @@ function analyzeImpl(dir) {
 function audit(spec, impl) {
   const results = { errors: [], warnings: [], passed: [] };
 
-  // Check each component has corresponding directory
+  // Check each component has corresponding directory or files
   for (const comp of spec.components) {
     const possibleDirs = [comp.name, `${comp.name}end`, comp.name.replace('api', 'backend').replace('web', 'frontend')];
-    const found = possibleDirs.some(d =>
+    const foundDir = possibleDirs.some(d =>
       impl.files.some(f => f.startsWith(d + '/') || f.startsWith(d + path.sep))
     );
 
-    if (found) {
+    // Also check for single-file CLI tools (files at root matching component or spec name)
+    const specName = path.basename(specDir).replace('-owl', '');
+    const foundRootFiles = impl.files.some(f =>
+      !f.includes('/') && !f.includes(path.sep) && f.endsWith('.js')
+    );
+    const isSingleComponent = spec.components.length === 1;
+
+    if (foundDir) {
       results.passed.push(`Component '${comp.name}' has implementation directory`);
+    } else if (isSingleComponent && foundRootFiles) {
+      results.passed.push(`Component '${comp.name}' has implementation files`);
     } else {
       results.errors.push(`Component '${comp.name}' - no matching directory found`);
     }
 
-    // Check for package.json in component dirs (account for name variations)
+    // Check for package.json (skip for single-file CLI tools)
     const nameVariants = [comp.name, comp.name.replace('api', 'backend'), comp.name.replace('web', 'frontend')];
     const hasPackageJson = impl.files.some(f =>
       nameVariants.some(n => f.startsWith(n + '/') || f.startsWith(n + path.sep)) && f.endsWith('package.json')
     );
     if (hasPackageJson) {
       results.passed.push(`Component '${comp.name}' has package.json`);
+    } else if (isSingleComponent && foundRootFiles) {
+      // Single-file CLI tools don't need package.json
+      results.passed.push(`Component '${comp.name}' is single-file (no package.json needed)`);
     } else {
       results.warnings.push(`Component '${comp.name}' - no package.json found`);
     }
