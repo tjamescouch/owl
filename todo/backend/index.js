@@ -5,8 +5,8 @@ import cors from 'cors';
 
 // In-memory data store
 let todos = [
-  { id: '1', title: 'Learn GraphQL', description: 'Start with the official docs and build a small project', completed: false, priority: 'medium', dueDate: null, tags: ['learning', 'tech'], createdAt: new Date().toISOString() },
-  { id: '2', title: 'Build a todo app', description: '', completed: true, priority: 'high', dueDate: null, tags: ['project'], createdAt: new Date().toISOString() },
+  { id: '1', title: 'Learn GraphQL', description: 'Start with the official docs and build a small project', completed: false, priority: 'MEDIUM', dueDate: null, tags: ['learning', 'tech'], createdAt: new Date().toISOString() },
+  { id: '2', title: 'Build a todo app', description: '', completed: true, priority: 'HIGH', dueDate: null, tags: ['project'], createdAt: new Date().toISOString() },
 ];
 let nextId = 3;
 
@@ -157,9 +157,9 @@ const resolvers = {
         overdue,
         completionPercent: total > 0 ? Math.round((completed / total) * 1000) / 10 : 0,
         byPriority: {
-          high: todos.filter(t => t.priority === 'high').length,
-          medium: todos.filter(t => t.priority === 'medium').length,
-          low: todos.filter(t => t.priority === 'low').length,
+          high: todos.filter(t => t.priority === 'HIGH').length,
+          medium: todos.filter(t => t.priority === 'MEDIUM').length,
+          low: todos.filter(t => t.priority === 'LOW').length,
         },
       };
     },
@@ -177,7 +177,7 @@ const resolvers = {
         title,
         description,
         completed: false,
-        priority: priority.toLowerCase(),
+        priority: priority.toUpperCase(),
         dueDate,
         tags,
         createdAt: new Date().toISOString(),
@@ -194,7 +194,7 @@ const resolvers = {
       if (todo) {
         if (title !== undefined) todo.title = title;
         if (description !== undefined) todo.description = description;
-        if (priority !== undefined) todo.priority = priority.toLowerCase();
+        if (priority !== undefined) todo.priority = priority.toUpperCase();
         if (dueDate !== undefined) todo.dueDate = dueDate;
         if (tags !== undefined) {
           todo.tags = tags;
@@ -253,7 +253,7 @@ const resolvers = {
             id: String(nextId++),
             title: todo.title || 'Untitled',
             completed: !!todo.completed,
-            priority: todo.priority || 'medium',
+            priority: (todo.priority || 'MEDIUM').toUpperCase(),
             dueDate: todo.dueDate || null,
             tags: Array.isArray(todo.tags) ? todo.tags : [],
             createdAt: todo.createdAt || new Date().toISOString(),
