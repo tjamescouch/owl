@@ -17,6 +17,9 @@
 - specs are natural language, not formal grammar
 - the spec says WHAT, the executor decides HOW
 - minimal magic - user can read the script and understand it
+- implementation is fluid, spec is source of truth
+- idempotent means "don't re-apply if satisfied", not "same output every time"
+- state file is advisory, not authoritative - delete to force re-apply
 
 ## extensibility
 

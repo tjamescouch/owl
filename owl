@@ -1,79 +1,106 @@
-#!/bin/bash
-#
-# owl - natural language terraform for products
-# uses claude code to apply specs
-#
+#!/usr/bin/env python3
+"""owl - natural language terraform for products"""
 
-set -e
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VERSION = "0.1.0"
 
-usage() {
-    echo "usage: owl <command> [options]"
-    echo ""
-    echo "commands:"
-    echo "  status    compare spec to codebase"
-    echo "  plan      show what would change"
-    echo "  apply     build what's missing"
-    echo "  drift     check if code diverged from spec"
-    echo "  init      create initial product.md"
-    echo ""
-    echo "options:"
-    echo "  -d, --dir <path>    project directory (default: current)"
-    echo "  -s, --spec <file>   spec file (default: product.md)"
-    echo "  -y, --yes           auto-approve apply"
-}
 
-find_spec() {
-    local dir="$1"
-    local spec="$2"
+def hash_content(content: str) -> str:
+    """sha256 hash of content"""
+    return hashlib.sha256(content.encode()).hexdigest()[:16]
 
-    if [[ -f "$dir/$spec" ]]; then
-        echo "$dir/$spec"
-    elif [[ -f "$dir/product.md" ]]; then
-        echo "$dir/product.md"
-    else
-        echo ""
-    fi
-}
 
-gather_specs() {
-    local dir="$1"
-    local main_spec="$2"
+def find_specs(dir: Path) -> dict[str, Path]:
+    """gather all spec files from a project"""
+    specs = {}
 
-    # gather all linked specs from product.md
-    local specs="$main_spec"
+    product = dir / "product.md"
+    if product.exists():
+        specs["product"] = product
 
-    # find components/*.md
-    if [[ -d "$dir/components" ]]; then
-        specs="$specs $(find "$dir/components" -name "*.md" 2>/dev/null | tr '\n' ' ')"
-    fi
+    constraints = dir / "constraints.md"
+    if constraints.exists():
+        specs["constraints"] = constraints
 
-    # find behaviors/*.md
-    if [[ -d "$dir/behaviors" ]]; then
-        specs="$specs $(find "$dir/behaviors" -name "*.md" 2>/dev/null | tr '\n' ' ')"
-    fi
+    for subdir in ["components", "behaviors"]:
+        path = dir / subdir
+        if path.exists():
+            for f in path.glob("*.md"):
+                key = f"{subdir}/{f.stem}"
+                specs[key] = f
 
-    # find constraints.md
-    if [[ -f "$dir/constraints.md" ]]; then
-        specs="$specs $dir/constraints.md"
-    fi
+    return specs
 
-    echo "$specs"
-}
 
-cmd_init() {
-    local dir="$1"
+def read_specs(specs: dict[str, Path]) -> tuple[str, dict[str, str]]:
+    """read specs, return concatenated content and per-file hashes"""
+    content = []
+    hashes = {}
 
-    if [[ -f "$dir/product.md" ]]; then
-        echo "error: product.md already exists"
-        exit 1
-    fi
+    for key, path in sorted(specs.items()):
+        text = path.read_text()
+        hashes[key] = hash_content(text)
+        content.append(f"# FILE: {path.name}\n")
+        content.append(text)
+        content.append("\n---\n")
 
-    cat > "$dir/product.md" << 'EOF'
-# my product
+    return "\n".join(content), hashes
 
-one sentence description of what this is.
+
+def load_state(dir: Path) -> dict:
+    """load state file"""
+    state_file = dir / ".owl" / "state.json"
+    if state_file.exists():
+        return json.loads(state_file.read_text())
+    return {}
+
+
+def save_state(dir: Path, state: dict):
+    """save state file"""
+    owl_dir = dir / ".owl"
+    owl_dir.mkdir(exist_ok=True)
+    state_file = owl_dir / "state.json"
+    state_file.write_text(json.dumps(state, indent=2))
+
+
+def run_claude(prompt: str, interactive: bool = False, auto_yes: bool = False) -> bool:
+    """invoke claude cli, return success"""
+    cmd = ["claude"]
+
+    if not interactive:
+        cmd.append("--print")
+    elif auto_yes:
+        cmd.append("--dangerously-skip-permissions")
+
+    cmd.extend(["-p", prompt])
+
+    try:
+        subprocess.run(cmd, check=True)
+        return True
+    except FileNotFoundError:
+        print("error: claude cli not found", file=sys.stderr)
+        print("install: https://docs.anthropic.com/en/docs/claude-code", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError:
+        return False
+
+
+def cmd_init(dir: Path):
+    """create initial spec files"""
+    if (dir / "product.md").exists():
+        print("error: product.md already exists", file=sys.stderr)
+        sys.exit(1)
+
+    (dir / "product.md").write_text("""# my product
+
+one sentence description.
 
 ## components
 
@@ -86,208 +113,173 @@ one sentence description of what this is.
 ## constraints
 
 see [constraints.md](constraints.md)
-EOF
+""")
 
-    mkdir -p "$dir/components" "$dir/behaviors"
-
-    cat > "$dir/constraints.md" << 'EOF'
-# constraints
+    (dir / "constraints.md").write_text("""# constraints
 
 ## style
 
-- describe your code style preferences
+- describe preferences
 
 ## dependencies
 
-- minimal dependencies
-EOF
+- minimal
+""")
 
-    echo "created product.md, constraints.md, components/, behaviors/"
-    echo "edit product.md to describe your product, then run: owl plan"
-}
+    (dir / "components").mkdir(exist_ok=True)
+    (dir / "behaviors").mkdir(exist_ok=True)
 
-cmd_status() {
-    local dir="$1"
-    local spec_file="$2"
-    local specs=$(gather_specs "$dir" "$spec_file")
+    # add .owl to gitignore
+    gitignore = dir / ".gitignore"
+    if gitignore.exists():
+        content = gitignore.read_text()
+        if ".owl/" not in content:
+            gitignore.write_text(content + "\n.owl/\n")
+    else:
+        gitignore.write_text(".owl/\n")
 
-    echo "owl status: comparing spec to codebase"
-    echo ""
+    print("created product.md, constraints.md, components/, behaviors/")
 
-    # build prompt for claude
-    local prompt="You are owl, a tool that compares product specifications to codebases.
 
-Read the following spec files and compare them to the current codebase.
+def cmd_status(dir: Path, specs: str, hashes: dict[str, str]):
+    """compare spec to reality"""
+    state = load_state(dir)
 
-Report:
-1. What's specified but missing (needs implementation)
-2. What exists but isn't specified (possible drift or detail)
-3. What contradicts the spec (needs fixing)
+    # check what's stale
+    stale = []
+    for key, h in hashes.items():
+        stored = state.get("hashes", {}).get(key)
+        if stored and stored != h:
+            stale.append(key)
 
-Be concise. Use bullet points.
+    if stale:
+        print(f"stale specs (changed since last apply): {', '.join(stale)}\n")
 
-Spec files to read:
-$specs
+    prompt = f"""you are owl. compare these specs to the codebase in {dir}.
 
-Analyze the codebase in this directory: $dir"
+report:
+1. specified but missing (needs implementation)
+2. exists but not specified (possible drift)
+3. contradicts spec (needs fixing)
 
-    claude --print "$prompt"
-}
+be concise. bullet points.
 
-cmd_plan() {
-    local dir="$1"
-    local spec_file="$2"
-    local specs=$(gather_specs "$dir" "$spec_file")
+SPECS:
+{specs}"""
 
-    echo "owl plan: determining what would change"
-    echo ""
+    run_claude(prompt)
 
-    local prompt="You are owl, a tool that plans implementation from product specifications.
 
-Read the following spec files and the current codebase.
+def cmd_plan(dir: Path, specs: str, hashes: dict[str, str]):
+    """show what would change"""
+    state = load_state(dir)
+    spec_hash = hash_content(specs)
 
-Create an implementation plan:
-1. List each component/behavior that needs to be built or modified
-2. For each, describe what needs to be done (high level)
-3. Identify any ambiguities or questions in the spec
+    if state.get("spec_hash") == spec_hash:
+        print("spec unchanged since last apply.")
+        print("use 'owl drift' to check if code still matches.\n")
 
-Do NOT implement anything. Just plan.
+    prompt = f"""you are owl. plan implementation from these specs for {dir}.
 
-Spec files to read:
-$specs
+create a numbered task list:
+1. what to build/modify
+2. high-level description of each
+3. any ambiguities or questions
 
-Analyze the codebase in this directory: $dir"
+do NOT implement. just plan.
 
-    claude --print "$prompt"
-}
+SPECS:
+{specs}"""
 
-cmd_apply() {
-    local dir="$1"
-    local spec_file="$2"
-    local auto_yes="$3"
-    local specs=$(gather_specs "$dir" "$spec_file")
+    run_claude(prompt)
 
-    echo "owl apply: building from spec"
-    echo ""
 
-    local prompt="You are owl, a tool that implements product specifications.
+def cmd_apply(dir: Path, specs: str, hashes: dict[str, str], auto_yes: bool = False):
+    """build what's missing"""
+    state = load_state(dir)
+    spec_hash = hash_content(specs)
 
-Read the following spec files. Then implement what's missing in the codebase.
+    if state.get("spec_hash") == spec_hash and state.get("status") == "satisfied":
+        print("spec already satisfied. nothing to apply.")
+        print("use 'owl drift' to verify, or delete .owl/state.json to force re-apply.")
+        return
 
-Rules:
-- Follow the constraints.md strictly
-- Implement one component/behavior at a time
-- After each implementation, verify it matches the spec
-- Be minimal - don't add features not in the spec
+    prompt = f"""you are owl. implement these specs in {dir}.
 
-Spec files to read:
-$specs
+rules:
+- follow constraints strictly
+- one component at a time
+- verify each matches spec
+- be minimal
 
-Implement in this directory: $dir"
+SPECS:
+{specs}"""
 
-    if [[ "$auto_yes" == "true" ]]; then
-        claude --dangerously-skip-permissions "$prompt"
-    else
-        claude "$prompt"
-    fi
-}
+    success = run_claude(prompt, interactive=True, auto_yes=auto_yes)
 
-cmd_drift() {
-    local dir="$1"
-    local spec_file="$2"
-    local specs=$(gather_specs "$dir" "$spec_file")
+    if success:
+        now = datetime.now(timezone.utc).isoformat()
+        state = {
+            "spec_hash": spec_hash,
+            "hashes": hashes,
+            "status": "satisfied",
+            "applied_at": now,
+            "owl_version": VERSION,
+        }
+        save_state(dir, state)
+        print(f"\nstate saved to .owl/state.json")
 
-    echo "owl drift: checking for divergence"
-    echo ""
 
-    local prompt="You are owl, a tool that detects drift between specs and code.
+def cmd_drift(dir: Path, specs: str, hashes: dict[str, str]):
+    """check for divergence"""
+    prompt = f"""you are owl. detect drift between specs and code in {dir}.
 
-Read the following spec files and compare to the current codebase.
+report ONLY:
+1. behavioral drift (code contradicts spec)
+2. scope creep (code exceeds spec)
+3. partial implementations
 
-Report ONLY:
-1. Code that contradicts the spec (behavioral drift)
-2. Code that goes beyond the spec (scope creep)
-3. Spec requirements that are partially implemented
+ignore implementation details not in spec.
 
-Ignore implementation details not covered by the spec.
+SPECS:
+{specs}"""
 
-Spec files to read:
-$specs
+    run_claude(prompt)
 
-Check the codebase in this directory: $dir"
 
-    claude --print "$prompt"
-}
+def main():
+    parser = argparse.ArgumentParser(
+        description="owl - natural language terraform for products"
+    )
+    parser.add_argument("command", choices=["init", "status", "plan", "apply", "drift"])
+    parser.add_argument("-d", "--dir", type=Path, default=Path.cwd(), help="project directory")
+    parser.add_argument("-y", "--yes", action="store_true", help="auto-approve apply")
+    parser.add_argument("--version", action="version", version=f"owl {VERSION}")
 
-# parse args
-COMMAND=""
-DIR="."
-SPEC="product.md"
-AUTO_YES="false"
+    args = parser.parse_args()
+    dir = args.dir.resolve()
 
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        status|plan|apply|drift|init)
-            COMMAND="$1"
-            shift
-            ;;
-        -d|--dir)
-            DIR="$2"
-            shift 2
-            ;;
-        -s|--spec)
-            SPEC="$2"
-            shift 2
-            ;;
-        -y|--yes)
-            AUTO_YES="true"
-            shift
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            echo "unknown option: $1"
-            usage
-            exit 1
-            ;;
-    esac
-done
+    if args.command == "init":
+        cmd_init(dir)
+        return
 
-if [[ -z "$COMMAND" ]]; then
-    usage
-    exit 1
-fi
+    specs = find_specs(dir)
+    if not specs:
+        print(f"error: no product.md found in {dir}", file=sys.stderr)
+        print("run 'owl init' to create one", file=sys.stderr)
+        sys.exit(1)
 
-# resolve directory
-DIR="$(cd "$DIR" && pwd)"
+    spec_content, hashes = read_specs(specs)
 
-# find spec file
-if [[ "$COMMAND" != "init" ]]; then
-    SPEC_FILE=$(find_spec "$DIR" "$SPEC")
-    if [[ -z "$SPEC_FILE" ]]; then
-        echo "error: no product.md found in $DIR"
-        echo "run 'owl init' to create one"
-        exit 1
-    fi
-fi
+    if args.command == "status":
+        cmd_status(dir, spec_content, hashes)
+    elif args.command == "plan":
+        cmd_plan(dir, spec_content, hashes)
+    elif args.command == "apply":
+        cmd_apply(dir, spec_content, hashes, args.yes)
+    elif args.command == "drift":
+        cmd_drift(dir, spec_content, hashes)
 
-# run command
-case "$COMMAND" in
-    init)
-        cmd_init "$DIR"
-        ;;
-    status)
-        cmd_status "$DIR" "$SPEC_FILE"
-        ;;
-    plan)
-        cmd_plan "$DIR" "$SPEC_FILE"
-        ;;
-    apply)
-        cmd_apply "$DIR" "$SPEC_FILE" "$AUTO_YES"
-        ;;
-    drift)
-        cmd_drift "$DIR" "$SPEC_FILE"
-        ;;
-esac
+
+if __name__ == "__main__":
+    main()

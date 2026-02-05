@@ -7,6 +7,7 @@ natural language terraform for products. describe what you want, agent builds it
 - [cli](components/cli.md) - command line interface
 - [executor](components/executor.md) - runs specs against codebases
 - [parser](components/parser.md) - reads and links spec files
+- [state](components/state.md) - tracks what has been built
 
 ## behaviors
 
