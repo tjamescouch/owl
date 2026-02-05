@@ -4,7 +4,51 @@ draw the rest of the owl.
 
 a natural language declarative specification format for products. like terraform, but you describe what you want in plain english and an agent builds it.
 
+## install
+
+```bash
+# clone and add to path
+git clone https://github.com/tjamescouch/owl.git
+export PATH="$PATH:$(pwd)/owl"
+
+# requires claude code cli
+# https://docs.anthropic.com/en/docs/claude-code
+```
+
 ## quick start
+
+```bash
+# initialize a new project
+owl init
+
+# edit product.md to describe what you want
+
+# see what would be built
+owl plan
+
+# build it
+owl apply
+```
+
+## commands
+
+```
+owl init      create product.md template
+owl status    compare spec to codebase
+owl plan      show what would change
+owl apply     build what's missing
+owl drift     check if code diverged from spec
+```
+
+## options
+
+```
+-d, --dir <path>    project directory (default: current)
+-s, --spec <file>   spec file (default: product.md)
+-y, --yes           auto-approve apply (danger)
+```
+
+## example spec
 
 ```markdown
 # product.md
@@ -22,13 +66,7 @@ a todo app with user accounts.
 see [constraints.md](constraints.md)
 ```
 
-then:
-
-```
-/owl apply
-```
-
-agent reads the spec, diffs against reality, builds what's missing.
+owl reads the spec, diffs against reality, builds what's missing.
 
 ## docs
 
