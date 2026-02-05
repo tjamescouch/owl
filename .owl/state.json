@@ -1,0 +1,59 @@
+{
+  "spec_hash": "548a032c32937a6b",
+  "applied_at": "2026-02-05T05:52:05.778446+00:00",
+  "owl_version": "0.1.0",
+  "components": {
+    "grammar": {
+      "status": "satisfied",
+      "spec_hash": "fb78fa8315b2405b",
+      "files": [],
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    },
+    "cli": {
+      "status": "satisfied",
+      "spec_hash": "970ea0181b39a333",
+      "files": [],
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    },
+    "executor": {
+      "status": "satisfied",
+      "spec_hash": "bd829aa5d2d7438c",
+      "files": [],
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    },
+    "parser": {
+      "status": "satisfied",
+      "spec_hash": "2d8369295b0abe44",
+      "files": [],
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    },
+    "state": {
+      "status": "satisfied",
+      "spec_hash": "166295cfd3b4d3f0",
+      "files": [],
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    }
+  },
+  "behaviors": {
+    "status": {
+      "status": "satisfied",
+      "spec_hash": "ef5679853d314293",
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    },
+    "plan": {
+      "status": "satisfied",
+      "spec_hash": "dddb3c221554d830",
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    },
+    "apply": {
+      "status": "satisfied",
+      "spec_hash": "b876fc1f417a485e",
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    },
+    "drift": {
+      "status": "satisfied",
+      "spec_hash": "dffc816d97f7be52",
+      "applied_at": "2026-02-05T05:52:05.778446+00:00"
+    }
+  }
+}
