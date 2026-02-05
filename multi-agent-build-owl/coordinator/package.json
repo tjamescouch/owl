@@ -1,0 +1,14 @@
+{
+  "name": "multi-agent-build-coordinator",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "mab-coordinator": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.0"
+  }
+}
