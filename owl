@@ -1,0 +1,293 @@
+#!/bin/bash
+#
+# owl - natural language terraform for products
+# uses claude code to apply specs
+#
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+usage() {
+    echo "usage: owl <command> [options]"
+    echo ""
+    echo "commands:"
+    echo "  status    compare spec to codebase"
+    echo "  plan      show what would change"
+    echo "  apply     build what's missing"
+    echo "  drift     check if code diverged from spec"
+    echo "  init      create initial product.md"
+    echo ""
+    echo "options:"
+    echo "  -d, --dir <path>    project directory (default: current)"
+    echo "  -s, --spec <file>   spec file (default: product.md)"
+    echo "  -y, --yes           auto-approve apply"
+}
+
+find_spec() {
+    local dir="$1"
+    local spec="$2"
+
+    if [[ -f "$dir/$spec" ]]; then
+        echo "$dir/$spec"
+    elif [[ -f "$dir/product.md" ]]; then
+        echo "$dir/product.md"
+    else
+        echo ""
+    fi
+}
+
+gather_specs() {
+    local dir="$1"
+    local main_spec="$2"
+
+    # gather all linked specs from product.md
+    local specs="$main_spec"
+
+    # find components/*.md
+    if [[ -d "$dir/components" ]]; then
+        specs="$specs $(find "$dir/components" -name "*.md" 2>/dev/null | tr '\n' ' ')"
+    fi
+
+    # find behaviors/*.md
+    if [[ -d "$dir/behaviors" ]]; then
+        specs="$specs $(find "$dir/behaviors" -name "*.md" 2>/dev/null | tr '\n' ' ')"
+    fi
+
+    # find constraints.md
+    if [[ -f "$dir/constraints.md" ]]; then
+        specs="$specs $dir/constraints.md"
+    fi
+
+    echo "$specs"
+}
+
+cmd_init() {
+    local dir="$1"
+
+    if [[ -f "$dir/product.md" ]]; then
+        echo "error: product.md already exists"
+        exit 1
+    fi
+
+    cat > "$dir/product.md" << 'EOF'
+# my product
+
+one sentence description of what this is.
+
+## components
+
+- [component](components/component.md) - what it does
+
+## behaviors
+
+- [behavior](behaviors/behavior.md) - how it works
+
+## constraints
+
+see [constraints.md](constraints.md)
+EOF
+
+    mkdir -p "$dir/components" "$dir/behaviors"
+
+    cat > "$dir/constraints.md" << 'EOF'
+# constraints
+
+## style
+
+- describe your code style preferences
+
+## dependencies
+
+- minimal dependencies
+EOF
+
+    echo "created product.md, constraints.md, components/, behaviors/"
+    echo "edit product.md to describe your product, then run: owl plan"
+}
+
+cmd_status() {
+    local dir="$1"
+    local spec_file="$2"
+    local specs=$(gather_specs "$dir" "$spec_file")
+
+    echo "owl status: comparing spec to codebase"
+    echo ""
+
+    # build prompt for claude
+    local prompt="You are owl, a tool that compares product specifications to codebases.
+
+Read the following spec files and compare them to the current codebase.
+
+Report:
+1. What's specified but missing (needs implementation)
+2. What exists but isn't specified (possible drift or detail)
+3. What contradicts the spec (needs fixing)
+
+Be concise. Use bullet points.
+
+Spec files to read:
+$specs
+
+Analyze the codebase in this directory: $dir"
+
+    claude --print "$prompt"
+}
+
+cmd_plan() {
+    local dir="$1"
+    local spec_file="$2"
+    local specs=$(gather_specs "$dir" "$spec_file")
+
+    echo "owl plan: determining what would change"
+    echo ""
+
+    local prompt="You are owl, a tool that plans implementation from product specifications.
+
+Read the following spec files and the current codebase.
+
+Create an implementation plan:
+1. List each component/behavior that needs to be built or modified
+2. For each, describe what needs to be done (high level)
+3. Identify any ambiguities or questions in the spec
+
+Do NOT implement anything. Just plan.
+
+Spec files to read:
+$specs
+
+Analyze the codebase in this directory: $dir"
+
+    claude --print "$prompt"
+}
+
+cmd_apply() {
+    local dir="$1"
+    local spec_file="$2"
+    local auto_yes="$3"
+    local specs=$(gather_specs "$dir" "$spec_file")
+
+    echo "owl apply: building from spec"
+    echo ""
+
+    local prompt="You are owl, a tool that implements product specifications.
+
+Read the following spec files. Then implement what's missing in the codebase.
+
+Rules:
+- Follow the constraints.md strictly
+- Implement one component/behavior at a time
+- After each implementation, verify it matches the spec
+- Be minimal - don't add features not in the spec
+
+Spec files to read:
+$specs
+
+Implement in this directory: $dir"
+
+    if [[ "$auto_yes" == "true" ]]; then
+        claude --dangerously-skip-permissions "$prompt"
+    else
+        claude "$prompt"
+    fi
+}
+
+cmd_drift() {
+    local dir="$1"
+    local spec_file="$2"
+    local specs=$(gather_specs "$dir" "$spec_file")
+
+    echo "owl drift: checking for divergence"
+    echo ""
+
+    local prompt="You are owl, a tool that detects drift between specs and code.
+
+Read the following spec files and compare to the current codebase.
+
+Report ONLY:
+1. Code that contradicts the spec (behavioral drift)
+2. Code that goes beyond the spec (scope creep)
+3. Spec requirements that are partially implemented
+
+Ignore implementation details not covered by the spec.
+
+Spec files to read:
+$specs
+
+Check the codebase in this directory: $dir"
+
+    claude --print "$prompt"
+}
+
+# parse args
+COMMAND=""
+DIR="."
+SPEC="product.md"
+AUTO_YES="false"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        status|plan|apply|drift|init)
+            COMMAND="$1"
+            shift
+            ;;
+        -d|--dir)
+            DIR="$2"
+            shift 2
+            ;;
+        -s|--spec)
+            SPEC="$2"
+            shift 2
+            ;;
+        -y|--yes)
+            AUTO_YES="true"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -z "$COMMAND" ]]; then
+    usage
+    exit 1
+fi
+
+# resolve directory
+DIR="$(cd "$DIR" && pwd)"
+
+# find spec file
+if [[ "$COMMAND" != "init" ]]; then
+    SPEC_FILE=$(find_spec "$DIR" "$SPEC")
+    if [[ -z "$SPEC_FILE" ]]; then
+        echo "error: no product.md found in $DIR"
+        echo "run 'owl init' to create one"
+        exit 1
+    fi
+fi
+
+# run command
+case "$COMMAND" in
+    init)
+        cmd_init "$DIR"
+        ;;
+    status)
+        cmd_status "$DIR" "$SPEC_FILE"
+        ;;
+    plan)
+        cmd_plan "$DIR" "$SPEC_FILE"
+        ;;
+    apply)
+        cmd_apply "$DIR" "$SPEC_FILE" "$AUTO_YES"
+        ;;
+    drift)
+        cmd_drift "$DIR" "$SPEC_FILE"
+        ;;
+esac
