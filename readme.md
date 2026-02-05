@@ -68,6 +68,24 @@ see [constraints.md](constraints.md)
 
 owl reads the spec, diffs against reality, builds what's missing.
 
+## multi-agent mode (owl-pack)
+
+```bash
+# terminal 1: summon agents to work on specs
+owl-pack summon
+
+# terminal 2+: agents join and claim components
+owl-pack join
+
+# or just watch
+owl-pack watch
+```
+
+agents coordinate via agentchat:
+- `claim <component>` - take ownership
+- `done <component>` - mark complete
+- `status` - see what's claimed/unclaimed
+
 ## docs
 
 - [spec](spec.md) - the format specification
