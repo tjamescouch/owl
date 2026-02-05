@@ -5,10 +5,13 @@ import App from './App';
 import { initErrorHandler } from './error-handler';
 
 // Initialize error reporting to error-daemon
-initErrorHandler('todo-app');
+const ERROR_COLLECTOR = import.meta.env.VITE_ERROR_COLLECTOR || 'http://localhost:4098/error';
+initErrorHandler('todo-app', ERROR_COLLECTOR);
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4005/graphql';
 
 const client = new ApolloClient({
-  uri: 'http://localhost:4005/graphql',
+  uri: API_URL,
   cache: new InMemoryCache(),
 });
 

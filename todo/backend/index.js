@@ -2,16 +2,38 @@ import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-// In-memory data store
-let todos = [
-  { id: '1', title: 'Learn GraphQL', description: 'Start with the official docs and build a small project', completed: false, priority: 'MEDIUM', dueDate: null, tags: ['learning', 'tech'], createdAt: new Date().toISOString() },
-  { id: '2', title: 'Build a todo app', description: '', completed: true, priority: 'HIGH', dueDate: null, tags: ['project'], createdAt: new Date().toISOString() },
-];
-let nextId = 3;
+// Data file - ~/.todo/data.json
+const DATA_DIR = process.env.TODO_DATA_DIR || path.join(os.homedir(), '.todo');
+const DATA_FILE = path.join(DATA_DIR, 'data.json');
 
-// All available tags
-let allTags = ['learning', 'tech', 'project', 'personal', 'work', 'urgent'];
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Load or initialize data
+function load() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    }
+  } catch (e) {
+    console.error('Failed to load data:', e.message);
+  }
+  return { todos: [], tags: ['personal', 'work', 'urgent'], nextId: 1 };
+}
+
+function save() {
+  fs.writeFileSync(DATA_FILE, JSON.stringify({ todos, tags: allTags, nextId }, null, 2));
+}
+
+// State
+let { todos, tags: allTags, nextId } = load();
+console.log(`Loaded ${todos.length} todos from ${DATA_FILE}`);
 
 // GraphQL Schema
 const typeDefs = `
@@ -183,10 +205,10 @@ const resolvers = {
         createdAt: new Date().toISOString(),
       };
       todos.push(todo);
-      // Add any new tags to allTags
       tags.forEach(tag => {
         if (!allTags.includes(tag)) allTags.push(tag);
       });
+      save();
       return todo;
     },
     updateTodo: (_, { id, title, description, priority, dueDate, tags }) => {
@@ -202,6 +224,7 @@ const resolvers = {
             if (!allTags.includes(tag)) allTags.push(tag);
           });
         }
+        save();
       }
       return todo;
     },
@@ -209,6 +232,7 @@ const resolvers = {
       const todo = todos.find(t => t.id === id);
       if (todo) {
         todo.completed = !todo.completed;
+        save();
       }
       return todo;
     },
@@ -216,6 +240,7 @@ const resolvers = {
       const index = todos.findIndex(t => t.id === id);
       if (index > -1) {
         todos.splice(index, 1);
+        save();
         return true;
       }
       return false;
@@ -223,6 +248,7 @@ const resolvers = {
     clearCompleted: () => {
       const count = todos.filter(t => t.completed).length;
       todos = todos.filter(t => !t.completed);
+      if (count > 0) save();
       return count;
     },
     toggleAll: (_, { completed }) => {
@@ -233,11 +259,13 @@ const resolvers = {
           count++;
         }
       });
+      if (count > 0) save();
       return count;
     },
     addTag: (_, { name }) => {
       if (!allTags.includes(name)) {
         allTags.push(name);
+        save();
       }
       return allTags;
     },
@@ -269,6 +297,7 @@ const resolvers = {
             if (!allTags.includes(tag)) allTags.push(tag);
           });
         }
+        if (imported > 0) save();
         return { success: true, imported, message: `Imported ${imported} todos` };
       } catch (e) {
         return { success: false, imported: 0, message: 'Failed to parse JSON: ' + e.message };
@@ -278,6 +307,7 @@ const resolvers = {
 };
 
 // Create Express app and Apollo Server
+const PORT = process.env.TODO_PORT || 4005;
 const app = express();
 const server = new ApolloServer({ typeDefs, resolvers });
 
@@ -285,6 +315,19 @@ await server.start();
 
 app.use('/graphql', cors(), express.json(), expressMiddleware(server));
 
-app.listen(4005, () => {
-  console.log('Server ready at http://localhost:4005/graphql');
+const httpServer = app.listen(PORT, () => {
+  console.log(`todo-server listening on :${PORT}`);
+  console.log(`data: ${DATA_FILE}`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\nShutting down...');
+  save();
+  httpServer.close(() => process.exit(0));
+});
+
+process.on('SIGTERM', () => {
+  save();
+  httpServer.close(() => process.exit(0));
 });
