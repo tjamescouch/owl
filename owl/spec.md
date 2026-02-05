@@ -163,15 +163,6 @@ agent compares spec to codebase:
 - what exists but isn't specified? → maybe drift, maybe detail
 - what contradicts the spec? → needs fixing
 
-### applying
-
-```
-/owl status    # what exists vs what's specified?
-/owl plan      # what would change?
-/owl apply     # make it so
-/owl drift     # has code diverged from spec?
-```
-
 ### granularity
 
 specs are intentionally high-level. they capture intent, not implementation.
@@ -207,7 +198,6 @@ use sparingly. every constraint reduces agent flexibility.
 | file | purpose |
 |------|---------|
 | readme.md | for humans: what is this, how to use it |
-| agents.md | for agents: how to work in this codebase |
 | product.md | for owl: what this product should be |
 | constraints.md | for owl: global invariants |
 
@@ -218,8 +208,7 @@ to use owl on a new project:
 1. create `product.md` at root
 2. describe what you're building in plain english
 3. add component specs as needed
-4. run `/owl plan` to see what agent would do
-5. run `/owl apply` when ready
+4. point an agent at the spec directory
 
 ## why "owl"
 

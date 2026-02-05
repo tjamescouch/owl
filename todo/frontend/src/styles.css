@@ -1,0 +1,403 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.app {
+  max-width: 650px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 30px;
+  text-align: center;
+}
+
+.header h1 {
+  color: white;
+  font-size: 2rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+}
+
+.stats-bar {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.add-form {
+  padding: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
+}
+
+.add-form input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 16px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.add-form input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.add-form select,
+.add-form input[type="date"] {
+  padding: 12px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: white;
+}
+
+.btn-secondary {
+  background: #95a5a6;
+  color: white;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #eee;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filters {
+  display: flex;
+  gap: 5px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #ecf0f1;
+  color: #666;
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.search-box {
+  padding: 8px 16px;
+  border: 2px solid #eee;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  width: 180px;
+  transition: border-color 0.2s;
+}
+
+.search-box:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.todo-list {
+  list-style: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.todo-item:hover {
+  background: #fafafa;
+}
+
+.todo-item.completed {
+  background: #f9f9f9;
+}
+
+.todo-checkbox {
+  width: 22px;
+  height: 22px;
+  margin-right: 15px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.priority-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.priority-high { background: #e74c3c; }
+.priority-medium { background: #f39c12; }
+.priority-low { background: #27ae60; }
+
+.todo-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-title {
+  font-size: 1rem;
+  color: #333;
+  cursor: pointer;
+}
+
+.todo-item.completed .todo-title {
+  text-decoration: line-through;
+  color: #999;
+}
+
+.todo-meta {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.due-date {
+  color: #e74c3c;
+}
+
+.todo-actions {
+  margin-left: 15px;
+}
+
+.delete-btn {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.footer {
+  padding: 20px;
+  text-align: center;
+  background: #fafafa;
+}
+
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: #999;
+}
+
+.empty-state svg {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 20px;
+  opacity: 0.3;
+}
+
+/* Dark Mode Toggle */
+.header {
+  position: relative;
+}
+
+.dark-mode-toggle {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.dark-mode-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.app.dark {
+  background: #1e1e2e;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.app.dark .stats-bar {
+  background: #252535;
+  border-color: #333;
+}
+
+.app.dark .stat-label {
+  color: #888;
+}
+
+.app.dark .add-form {
+  background: #252535;
+  border-color: #333;
+}
+
+.app.dark .add-form input[type="text"],
+.app.dark .add-form select,
+.app.dark .add-form input[type="date"] {
+  background: #1e1e2e;
+  border-color: #444;
+  color: #eee;
+}
+
+.app.dark .controls {
+  background: #1e1e2e;
+  border-color: #333;
+}
+
+.app.dark .controls select {
+  background: #252535;
+  border-color: #444;
+  color: #eee;
+}
+
+.app.dark .filter-btn {
+  background: #333;
+  color: #aaa;
+}
+
+.app.dark .search-box {
+  background: #252535;
+  border-color: #444;
+  color: #eee;
+}
+
+.app.dark .todo-item {
+  border-color: #333;
+}
+
+.app.dark .todo-item:hover {
+  background: #252535;
+}
+
+.app.dark .todo-item.completed {
+  background: #1a1a2a;
+}
+
+.app.dark .todo-title {
+  color: #eee;
+}
+
+.app.dark .todo-item.completed .todo-title {
+  color: #666;
+}
+
+.app.dark .todo-meta {
+  color: #777;
+}
+
+.app.dark .footer {
+  background: #252535;
+}
+
+.app.dark .empty-state {
+  color: #666;
+}
+
+/* Keyboard hints */
+.keyboard-hints {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  display: flex;
+  gap: 20px;
+}
+
+.keyboard-hints kbd {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}

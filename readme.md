@@ -1,95 +1,33 @@
 # owl
 
-draw the rest of the owl.
+a natural language declarative specification format. like terraform, but you describe what you want in plain english and an agent builds it.
 
-a natural language declarative specification format for products. like terraform, but you describe what you want in plain english and an agent builds it.
-
-## install
-
-```bash
-# clone and add to path
-git clone https://github.com/tjamescouch/owl.git
-export PATH="$PATH:$(pwd)/owl"
-
-# requires claude code cli
-# https://docs.anthropic.com/en/docs/claude-code
-```
-
-## quick start
-
-```bash
-# initialize a new project
-owl init
-
-# edit product.md to describe what you want
-
-# see what would be built
-owl plan
-
-# build it
-owl apply
-```
-
-## commands
+## structure
 
 ```
-owl init      create product.md template
-owl status    compare spec to codebase
-owl plan      show what would change
-owl apply     build what's missing
-owl drift     check if code diverged from spec
+owl/           language and layout specification
+todo-owl/      example: a todo app spec written in owl
+todo/          example: implementation built from todo-owl
 ```
 
-## options
+## how it works
+
+1. write a spec in markdown (product.md, components/, constraints.md)
+2. agent reads spec, compares to codebase
+3. agent builds what's missing
+
+## spec format
 
 ```
--d, --dir <path>    project directory (default: current)
--s, --spec <file>   spec file (default: product.md)
--y, --yes           auto-approve apply (danger)
+project/
+├── product.md          # what is this, links to components
+├── components/
+│   ├── api.md          # backend spec
+│   └── web.md          # frontend spec
+└── constraints.md      # global rules
 ```
 
-## example spec
-
-```markdown
-# product.md
-
-a todo app with user accounts.
-
-## components
-
-- [api](components/api.md) - rest api for todos
-- [web](components/web.md) - react frontend
-- [db](components/db.md) - postgres storage
-
-## constraints
-
-see [constraints.md](constraints.md)
-```
-
-owl reads the spec, diffs against reality, builds what's missing.
-
-## multi-agent mode (owl-pack)
-
-```bash
-# terminal 1: summon agents to work on specs
-owl-pack summon
-
-# terminal 2+: agents join and claim components
-owl-pack join
-
-# or just watch
-owl-pack watch
-```
-
-agents coordinate via agentchat:
-- `claim <component>` - take ownership
-- `done <component>` - mark complete
-- `status` - see what's claimed/unclaimed
-
-## docs
-
-- [spec](spec.md) - the format specification
-- [examples](examples/) - real-world usage
+see [owl/spec.md](owl/spec.md) for the full language specification.
 
 ## philosophy
 

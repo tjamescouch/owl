@@ -1,2 +1,4 @@
-__pycache__/
 .owl/
+.agentchat/
+node_modules/
+dist/

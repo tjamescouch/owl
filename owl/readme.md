@@ -1,7 +1,5 @@
-# owl
+# owl language specification
 
-the language specification.
-
-defines what owl spec files look like - the format, conventions, and grammar.
+defines the owl spec format: file structure, conventions, and grammar.
 
 see [spec.md](spec.md) for the full specification.
