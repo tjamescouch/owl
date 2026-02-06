@@ -152,6 +152,17 @@ button.secondary {
   text-align: center;
 }
 
+.live-indicator {
+  color: #22c55e;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 .share {
   margin-top: 24px;
 }

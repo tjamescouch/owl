@@ -1,40 +1,39 @@
 # constraints
 
-## environment
+## communication
 
-- v0.1 assumes same-machine execution
-- Each builder gets a git worktree: `git worktree add <path> -b build/<component>`
-- Agents must not access other agents' worktrees
-- Shared repo accessed via branches only
+- all coordination happens over a single chat channel
+- messages follow the protocol format: VERB <component> [args]
+- valid verbs: CLAIM, ASSIGN, READY, BLOCKED, FAIL, REJECTED, AUDIT, INTEGRATED, INTEGRATION_FAIL
 
-## git conventions
+## environments
 
-- Branch naming: `build/<component-name>`
-- Commit messages must reference component: `[<component>] description`
-- No force pushes to shared branches
-- Integration merges to `main` only after all audits pass
+- each builder agent works in an isolated environment
+- for same-machine builds: git worktrees, one per component
+- branch naming: build/<component-name>
+- agents must not modify files outside their assigned component's directory
 
-## message format
+## git
 
-- All messages sent to designated build channel (e.g., `#build`)
-- Messages are plain text, parseable
-- Component names must match owl spec exactly
-- Timestamps implicit in chat protocol
+- all work happens on feature branches, never main
+- agents push branches to origin when READY
+- integrator merges to main only after all audits pass
+- merge conflicts are resolved by the integrator, not builders
 
-## timeouts (v0.2)
+## protocol
 
-- v0.1: No automatic timeouts, human intervenes on stalls
-- Future: Heartbeat every 5 minutes, reclaim after 15 minutes silent
+- CLAIM is advisory - the coordinator confirms with ASSIGN or rejects with REJECTED
+- READY means: code builds, tests pass (if any), self-audit passes
+- FAIL includes a reason string
+- AUDIT results reference the spec checks that passed or failed
 
 ## failure handling
 
-- Build failure: Agent emits `FAIL`, may retry
-- Audit failure: Agent gets feedback, retries once, then escalates
-- Integration failure: Escalate to human (may indicate spec issue)
-- Double claim: First `CLAIM` wins, second gets `REJECTED`
+- on AUDIT FAIL: agent retries once with auditor feedback
+- on second AUDIT FAIL: coordinator escalates to human
+- agent timeout: undefined in v0.1 (human intervention)
 
-## trust model
+## scope
 
-- v0.1: All agents trusted (same operator)
-- Auditor provides verification, not security
-- Future: Sandboxed execution for untrusted agents
+- v0.1 targets same-machine builds with git worktree isolation
+- cross-machine builds are a future extension

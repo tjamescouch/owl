@@ -1,111 +1,34 @@
-# build-flow
+# build flow
 
-The complete sequence from owl spec to integrated codebase.
+the full sequence from owl spec to merged, working code.
 
-## phases
+## flow
 
-### 1. initialization
+1. coordinator reads the owl spec (product.md and all linked files)
+2. coordinator extracts the component list and dependency graph from interfaces sections
+3. coordinator creates a task for each component with dependency ordering
+4. coordinator announces available tasks on the chat channel
+5. builder agents send CLAIM messages for components they want to build
+6. coordinator responds with ASSIGN (first claim wins) or REJECTED (already claimed)
+7. assigned builders provision their environment (git worktree on branch build/<component>)
+8. builders with no unmet dependencies begin building immediately
+9. builders with unmet dependencies send BLOCKED and wait for dependency READY messages
+10. builder implements the component according to its spec and the constraints
+11. builder runs self-audit against the component spec
+12. if self-audit passes: builder pushes branch and sends READY <component> <branch>
+13. if self-audit fails: builder iterates on implementation, retries self-audit
+14. coordinator receives READY, dispatches auditor against the component
+15. auditor inspects built code against spec, sends AUDIT <component> PASS or FAIL
+16. on AUDIT PASS: coordinator marks component as ready, unblocks dependent components
+17. on AUDIT FAIL: see [failure](failure.md)
+18. when all components have AUDIT PASS: coordinator dispatches integrator
+19. integrator merges branches in dependency order into main
+20. integrator runs integration checks (cross-component interface verification)
+21. integrator sends INTEGRATED or INTEGRATION_FAIL
+22. coordinator reports final status
 
-```
-Coordinator:
-  1. Read owl spec (product.md, components/*.md, constraints.md)
-  2. Parse dependency graph from component interfaces
-  3. Create git worktrees for each component
-  4. Announce available components on #build
-```
+## parallel execution
 
-### 2. claiming
-
-```
-Builder:
-  1. Connect to #build
-  2. Emit CLAIM <component> for desired work
-
-Coordinator:
-  1. On CLAIM, check if component available
-  2. If available: emit ASSIGN <component> <worktree-path>
-  3. If taken: emit REJECTED <component>
-  4. Track assignments in state
-```
-
-### 3. building
-
-```
-Builder:
-  1. Receive ASSIGN, navigate to worktree
-  2. Read component spec from provided path
-  3. Check dependencies - if unmet, emit BLOCKED <component> <dep>
-  4. Build component per spec
-  5. Run local tests and auditor
-  6. On success: commit, emit READY <component> <branch>
-  7. On failure: emit FAIL <component> <reason>
-
-Coordinator:
-  1. On READY, queue component for audit
-  2. On BLOCKED, track and notify when dependency READYs
-  3. On FAIL, log and optionally reassign
-```
-
-### 4. auditing
-
-```
-Coordinator:
-  1. For each READY component, invoke auditor
-  2. Auditor checks implementation against spec
-
-Auditor:
-  1. Emit AUDIT <component> PASS if compliant
-  2. Emit AUDIT <component> FAIL <findings> if not
-
-Coordinator:
-  1. On PASS, mark component as audited
-  2. On FAIL, forward findings to builder for retry
-```
-
-### 5. integration
-
-```
-Coordinator:
-  1. When all components AUDIT PASS, invoke integrator
-
-Integrator:
-  1. Merge branches in dependency order (deps first)
-  2. Run integration tests if defined
-  3. Emit INTEGRATED on success
-  4. Emit INTEGRATION_FAIL <reason> on failure
-
-Coordinator:
-  1. On INTEGRATED, announce completion
-  2. On INTEGRATION_FAIL, escalate to human
-```
-
-## sequence diagram
-
-```
-Human          Coordinator      Builder-A       Builder-B       Auditor
-  |                |                |               |              |
-  |--owl spec----->|                |               |              |
-  |                |--worktrees---->|               |              |
-  |                |                |               |              |
-  |                |<--CLAIM api----|               |              |
-  |                |---ASSIGN api-->|               |              |
-  |                |                |               |              |
-  |                |<---------------+--CLAIM web----|              |
-  |                |----------------+--ASSIGN web-->|              |
-  |                |                |               |              |
-  |                |                |--build------->|              |
-  |                |<--READY api----|               |--BLOCKED---->|
-  |                |                |               |              |
-  |                |----invoke------|---------------|------------->|
-  |                |<---AUDIT PASS--|---------------|--------------|
-  |                |                |               |              |
-  |                |----unblock-----|-------------->|              |
-  |                |                |               |--build------>|
-  |                |<---------------|--READY web----|              |
-  |                |                |               |              |
-  |                |----invoke------|---------------|------------->|
-  |                |<---AUDIT PASS--|---------------|--------------|
-  |                |                |               |              |
-  |                |----integrate-->|               |              |
-  |<--INTEGRATED---|                |               |              |
-```
+- components with no dependencies can be built simultaneously by different agents
+- audits can run in parallel for independent components
+- the only serialization point is integration (step 18-21)

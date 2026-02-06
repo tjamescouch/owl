@@ -1,60 +1,41 @@
 # builder
 
-The builder agent constructs a single component from an owl spec in an isolated environment.
+builds one component to spec in an isolated environment. there is one builder per component.
 
-## purpose
+## state
 
-Build one component to spec, run local validation, and signal completion. The builder works autonomously within its scope but coordinates with the system via chat protocol.
+- the assigned component name and its owl spec file
+- the constraints file
+- a git worktree checked out to a dedicated branch
+- build status: idle, building, self-auditing, ready, failed
+
+## capabilities
+
+- receive an ASSIGN message and set up the build environment
+- read the component spec and constraints
+- implement the component: create files, install dependencies, write code
+- run the component's tests if any are defined or implied by the spec
+- self-audit against the spec before reporting READY
+- incorporate auditor feedback and retry on failure
 
 ## interfaces
 
-### receives
-- `ASSIGN <component> <worktree-path> <spec-path>` - task assignment from coordinator
-- `AUDIT <component> FAIL <feedback>` - retry signal with specific feedback
+exposes:
+- CLAIM <component> - requests a component assignment from coordinator
+- READY <component> <branch> - build complete, self-audited, branch pushed
+- FAIL <component> <reason> - build or self-audit failed
+- BLOCKED <component> <dependency> - waiting on another component
 
-### emits
-- `CLAIM <component>` - request to work on a component
-- `READY <component> <branch>` - component built and locally validated
-- `BLOCKED <component> <dependency>` - waiting for another component
-- `FAIL <component> <reason>` - build or validation failed
+depends on:
+- ASSIGN message from coordinator
+- the component's owl spec file
+- constraints.md from the owl spec
+- git worktree provisioned by coordinator or self-provisioned
+- dependency components in READY status (branch available to pull interfaces from)
 
-## behavior
+## invariants
 
-1. **Claim phase**
-   - Builder emits `CLAIM <component>` to request work
-   - Waits for `ASSIGN` from coordinator
-   - If no assignment within timeout, may claim different component
-
-2. **Setup phase**
-   - Receives worktree path and component spec
-   - Changes to worktree directory
-   - Reads component spec and constraints
-
-3. **Build phase**
-   - Implements the component per spec
-   - Follows all constraints from constraints.md
-   - If blocked on dependency: emits `BLOCKED`, waits for dependency `READY`
-
-4. **Validation phase**
-   - Runs local tests if specified in spec
-   - Runs auditor against own component
-   - If validation fails: emits `FAIL` with reason
-
-5. **Completion phase**
-   - Commits work to feature branch
-   - Emits `READY <component> <branch>`
-   - Awaits final `AUDIT` result from coordinator
-
-6. **Retry phase** (if audit fails)
-   - Receives `AUDIT <component> FAIL <feedback>`
-   - Applies feedback, rebuilds
-   - Returns to validation phase
-   - Max 1 retry, then escalates to human
-
-## constraints
-
-- Must work only within assigned worktree
-- Must not modify files outside component scope
-- Must follow constraints.md from the project spec
-- Must emit status messages for all state transitions
-- Must include tests if component spec requires them
+- only modifies files within the assigned component's directory
+- never modifies the owl spec files
+- does not report READY unless code builds and self-audit passes
+- works only on the assigned branch, never main

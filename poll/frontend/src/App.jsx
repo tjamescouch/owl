@@ -94,15 +94,32 @@ function Poll() {
   const [poll, setPoll] = useState(null);
   const [voted, setVoted] = useState(false);
   const [error, setError] = useState(null);
+  const [live, setLive] = useState(false);
 
   useEffect(() => {
     const votedPolls = JSON.parse(localStorage.getItem('votedPolls') || '[]');
     setVoted(votedPolls.includes(id));
 
-    fetch(`${API}/polls/${id}`)
-      .then(r => r.ok ? r.json() : Promise.reject('Not found'))
-      .then(setPoll)
-      .catch(() => setError('Poll not found'));
+    // Connect to WebSocket for live updates
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host.replace(/:\d+$/, ':4010');
+    const ws = new WebSocket(`${wsProtocol}//${wsHost}/polls/${id}/stream`);
+
+    ws.onopen = () => setLive(true);
+    ws.onclose = () => setLive(false);
+    ws.onerror = () => {
+      // Fallback to REST if WebSocket fails
+      fetch(`${API}/polls/${id}`)
+        .then(r => r.ok ? r.json() : Promise.reject('Not found'))
+        .then(setPoll)
+        .catch(() => setError('Poll not found'));
+    };
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.poll) setPoll(data.poll);
+    };
+
+    return () => ws.close();
   }, [id]);
 
   const vote = async (optionIndex) => {
@@ -117,9 +134,7 @@ function Poll() {
     const votedPolls = JSON.parse(localStorage.getItem('votedPolls') || '[]');
     localStorage.setItem('votedPolls', JSON.stringify([...votedPolls, id]));
     setVoted(true);
-
-    const res = await fetch(`${API}/polls/${id}`);
-    setPoll(await res.json());
+    // No manual refetch needed - WebSocket will push the update
   };
 
   if (error) return <div className="container"><h1>{error}</h1><Link to="/">Create a poll</Link></div>;
@@ -146,7 +161,10 @@ function Poll() {
           );
         })}
       </div>
-      <p className="total">{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</p>
+      <p className="total">
+        {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+        {live && <span className="live-indicator"> • Live</span>}
+      </p>
       <div className="share">
         <input type="text" value={window.location.href} readOnly onClick={e => e.target.select()} />
       </div>

@@ -1,51 +1,27 @@
 # auditor
 
-Validates a built component against its owl spec.
+validates a built component against its owl spec. invoked by the coordinator after a builder reports READY.
 
-## purpose
+## capabilities
 
-Verify that a builder's implementation matches the component specification. Provides independent validation as a trust-but-verify check.
+- read the component's owl spec (state, capabilities, interfaces, invariants)
+- inspect the built implementation (file structure, dependencies, code)
+- check structural compliance: expected files, dependencies, endpoints exist
+- check behavioral compliance where possible: interfaces match, invariants upheld
+- produce a pass/fail result with itemized findings
 
 ## interfaces
 
-### receives
-- Invocation from coordinator with component name, spec path, branch
+exposes:
+- AUDIT <component> PASS - all checks passed
+- AUDIT <component> FAIL <findings> - itemized list of failures
 
-### emits
-- `AUDIT <component> PASS` - implementation matches spec
-- `AUDIT <component> FAIL <findings>` - itemized list of failures
+depends on:
+- the component's owl spec file
+- the built code on a git branch
+- invoked by coordinator after builder reports READY
 
-## checks performed
+## invariants
 
-### structural
-- Expected files/directories exist
-- Dependencies declared in package.json/etc match constraints
-- Entry points present
-
-### interface compliance
-- Exposed endpoints/functions exist
-- Required dependencies imported correctly
-- API signatures match spec
-
-### constraint compliance
-- Tech stack matches constraints.md
-- No forbidden dependencies
-- Code organization follows spec
-
-## behavior
-
-1. Receive audit request from coordinator
-2. Checkout component branch
-3. Read component spec
-4. Run structural checks
-5. Run interface checks
-6. Run constraint checks
-7. Aggregate results
-8. Emit PASS if all checks pass, FAIL with findings otherwise
-
-## constraints
-
-- Auditor is read-only - never modifies code
-- Audit result is deterministic for same code + spec
-- Findings are specific and actionable
-- Can reuse existing `auditor/auditor.js` from owl repo
+- auditor is read-only - never modifies code or spec
+- audit result is deterministic for the same code + spec pair

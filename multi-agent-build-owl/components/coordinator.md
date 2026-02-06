@@ -1,70 +1,41 @@
 # coordinator
 
-The coordinator orchestrates multi-agent builds from owl specs.
-
-## purpose
-
-Parse owl specs into a task graph, assign components to builder agents, track progress, invoke auditing, and manage integration. The single point of coordination for a build.
-
-## interfaces
-
-### receives
-- `CLAIM <component>` - builder requests to work on component
-- `READY <component> <branch>` - builder completed work
-- `BLOCKED <component> <dep>` - builder waiting on dependency
-- `FAIL <component> <reason>` - builder failed
-- `AUDIT <component> PASS|FAIL` - auditor result
-- `INTEGRATED` / `INTEGRATION_FAIL` - integrator result
-
-### emits
-- `ASSIGN <component> <worktree> <spec-path>` - task assignment
-- `REJECTED <component>` - component already claimed
-- `UNBLOCKED <component>` - dependency now available
+orchestrates a multi-agent build from an owl spec. there is one coordinator per build.
 
 ## state
 
-```
-components: Map<name, {
-  status: 'available' | 'claimed' | 'building' | 'ready' | 'audited' | 'integrated',
-  assignee: agent-id | null,
-  branch: string | null,
-  dependencies: string[],
-  blockedBy: string[]
-}>
-```
+- the owl spec being built (product.md + all linked files)
+- a task graph derived from the spec's component dependencies
+- assignment map: which agent is building which component
+- status of each component: unassigned, claimed, building, ready, failed, merged
 
-## behavior
+## capabilities
 
-### initialization
-1. Parse owl spec directory
-2. Extract components from `components/*.md`
-3. Build dependency graph from `interfaces.depends on` sections
-4. Create git worktree per component
-5. Set all components to `available`
-6. Announce on build channel
+- parse an owl spec and extract the component dependency graph from interfaces sections
+- create a task for each component with correct dependency ordering
+- assign tasks to available builder agents via chat
+- track progress through agent status messages
+- dispatch auditor when a builder reports READY
+- dispatch integrator when all components pass audit
+- handle CLAIM conflicts (first wins)
+- reassign tasks on failure (one retry to same agent, then escalate)
 
-### claim handling
-1. On `CLAIM <component>`:
-   - If available: set status=claimed, emit `ASSIGN`
-   - If not available: emit `REJECTED`
+## interfaces
 
-### progress tracking
-1. On `READY`: set status=ready, queue for audit
-2. On `BLOCKED`: track blocker, notify when blocker READYs
-3. On `FAIL`: log, optionally reassign (v0.2)
+exposes:
+- ASSIGN <component> <agent> - tells an agent to build a component
+- REJECTED <component> <agent> <reason> - denies a duplicate claim
+- status summary on request
 
-### audit orchestration
-1. For each ready component, invoke auditor
-2. On `AUDIT PASS`: set status=audited
-3. On `AUDIT FAIL`: forward feedback to builder
+depends on:
+- builder status messages (CLAIM, READY, FAIL)
+- auditor results (AUDIT PASS/FAIL)
+- integrator results (INTEGRATED/INTEGRATION_FAIL)
+- an owl spec in the working directory
+- a chat channel for communication
 
-### integration trigger
-1. When all components audited: invoke integrator
-2. On `INTEGRATED`: announce success, cleanup worktrees
-3. On `INTEGRATION_FAIL`: escalate to human
+## invariants
 
-## constraints
-
-- Single coordinator per build
-- Coordinator does not build - only orchestrates
-- State persisted to allow recovery (v0.2)
+- each component is assigned to at most one agent at a time
+- a component cannot be assigned until all its dependencies are in READY or MERGED status
+- the coordinator never modifies source code - it only coordinates
