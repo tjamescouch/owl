@@ -9,14 +9,18 @@
 ## message protocol
 
 ```
+TASKS <spec-url>            - coordinator broadcasts available components
 CLAIM <component>           - agent announces intent to build
 ACK <component> <agent>     - coordinator confirms assignment
+REJECT <component> <reason> - coordinator denies claim
 PROGRESS <component> <pct>  - periodic status update
 BLOCKED <component> <dep>   - waiting on dependency
 READY <component> <pr-url>  - implementation complete, PR created
 AUDIT <component> PASS|FAIL [details] - auditor verdict
+MERGED <component>          - PR merged, dependents unblocked
 TIMEOUT <component>         - agent missed checkin, task reclaimed
 RETRY <component>           - reassigned after failure
+ABORT <component> <reason>  - agent voluntarily releases task
 ```
 
 ## timing
@@ -37,6 +41,17 @@ RETRY <component>           - reassigned after failure
 - each agent works in separate git worktree
 - agents must not modify files outside their component boundary
 - shared code changes require coordinator approval
+
+## claim protocol
+
+**CRITICAL: agents MUST wait for ACK before starting work**
+
+1. agent sends CLAIM <component>
+2. coordinator validates (not already claimed, deps met)
+3. coordinator sends ACK <component> <agent> or REJECT <component> <reason>
+4. only after ACK does agent begin implementation
+
+claims without ACK within 2 minutes are considered expired.
 
 ## conflict resolution
 
