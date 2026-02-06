@@ -111,13 +111,28 @@ global rules that apply everywhere.
 
 ### granularity
 
-high level. describe WHAT, not HOW.
+components describe WHAT the system does, not HOW.
 
-wrong: `uses express.js with cors middleware on port 3000`
+wrong (in a component): `uses express.js with cors middleware on port 3000`
 
-right: `http server with cors enabled on configurable port`
+right (in a component): `http server with cors enabled`
 
 the agent decides implementation details.
+
+specific technology choices belong in `constraints.md`, not components:
+
+```markdown
+# constraints
+
+## stack
+
+- backend: node, express
+- frontend: react, vite
+
+## ports
+
+- api on 3000
+```
 
 ### escape hatches
 
