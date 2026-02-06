@@ -232,36 +232,33 @@ function handleMessage(msg) {
   if (msg.from === state.agentId) return; // Ignore own messages
   if (msg.to !== state.channel) return;
 
-  const content = msg.content.trim();
+  // Strip markdown formatting and extract protocol commands
+  let content = msg.content.trim();
   const from = msg.from;
 
-  // Parse protocol messages
-  if (content.startsWith('CLAIM ')) {
-    const component = content.slice(6).trim();
-    handleClaim(from, component);
-  } else if (content.startsWith('READY ')) {
-    const parts = content.slice(6).trim().split(/\s+/);
-    const component = parts[0];
-    const branch = parts[1] || null;
-    handleReady(from, component, branch);
-  } else if (content.startsWith('BLOCKED ')) {
-    const parts = content.slice(8).trim().split(/\s+/);
-    const component = parts[0];
-    const dep = parts[1] || null;
-    handleBlocked(from, component, dep);
-  } else if (content.startsWith('FAIL ')) {
-    const parts = content.slice(5).trim().split(/\s+/);
-    const component = parts[0];
-    const reason = parts.slice(1).join(' ') || 'unknown';
-    handleFail(from, component, reason);
-  } else if (content.startsWith('AUDIT ')) {
-    const parts = content.slice(6).trim().split(/\s+/);
-    const component = parts[0];
-    const result = parts[1]?.toUpperCase();
-    const details = parts.slice(2).join(' ');
-    handleAudit(from, component, result, details);
+  // Remove markdown bold/italic
+  content = content.replace(/\*\*/g, '').replace(/\*/g, '');
+
+  // Look for protocol commands anywhere in the message
+  const claimMatch = content.match(/CLAIM\s+(\w+)/i);
+  const readyMatch = content.match(/READY\s+(\w+)(?:\s+(\S+))?/i);
+  const blockedMatch = content.match(/BLOCKED\s+(\w+)(?:\s+(\w+))?/i);
+  const failMatch = content.match(/FAIL\s+(\w+)(?:\s+(.+))?/i);
+  const auditMatch = content.match(/AUDIT\s+(\w+)\s+(PASS|FAIL)(?:\s+(.+))?/i);
+
+  if (claimMatch) {
+    handleClaim(from, claimMatch[1]);
+  } else if (readyMatch) {
+    handleReady(from, readyMatch[1], readyMatch[2] || null);
+  } else if (blockedMatch) {
+    handleBlocked(from, blockedMatch[1], blockedMatch[2] || null);
+  } else if (failMatch) {
+    handleFail(from, failMatch[1], failMatch[2] || 'unknown');
+  } else if (auditMatch) {
+    handleAudit(from, auditMatch[1], auditMatch[2].toUpperCase(), auditMatch[3] || '');
   }
 }
+
 
 // Handle CLAIM
 function handleClaim(from, componentName) {
