@@ -3,3 +3,30 @@
 .build-worktrees/
 node_modules/
 dist/
+
+# Sensitive directories - NEVER commit
+.claude/
+.ssh/
+.owl/
+.agentchat/
+.env
+.env.*
+*.pem
+*.key
+identity.json
+*-identity.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+logs/
