@@ -12,9 +12,9 @@ react frontend for polls.
 
 - home page: create new poll form + list of recent polls
 - poll page (/poll/:id): view question, vote, see results
-- show vote percentages as horizontal bars
+- display vote count and percentage bar per option
 - disable voting if already voted (check localStorage)
-- shareable url for each poll
+- share poll via displayed url
 
 ## interfaces
 

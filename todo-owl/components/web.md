@@ -14,7 +14,6 @@ react frontend for todo app.
 
 - create todo with title, description, priority, due date, tags
 - toggle todo completion
-- edit todo inline
 - delete todo with undo toast
 - expand/collapse description
 - filter and sort todos

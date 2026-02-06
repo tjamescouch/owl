@@ -9,7 +9,7 @@ graphql api for todo operations.
 
 ## capabilities
 
-- crud operations on todos
+- create, update, toggle, and delete todos
 - filter by status (all, active, completed)
 - filter by tag
 - sort by created date, due date, priority, or title
