@@ -194,10 +194,12 @@ function connect() {
 
     state.ws.on('message', (data) => {
       try {
-        const msg = JSON.parse(data.toString());
+        const raw = data.toString();
+        console.log(`[RAW] ${raw.slice(0, 200)}`);
+        const msg = JSON.parse(raw);
         handleMessage(msg);
       } catch (e) {
-        // Ignore parse errors
+        console.log(`[PARSE ERROR] ${e.message}`);
       }
     });
 
