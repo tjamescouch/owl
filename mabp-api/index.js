@@ -3,8 +3,20 @@ const cors = require('cors');
 const marketplaceRouter = require('./marketplace-aggregator');
 
 const app = express();
+app.disable('x-powered-by');
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
+app.use((req, res, next) => {
+  res.set({
+    'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'X-XSS-Protection': '0',
+    'Content-Security-Policy': "default-src 'self'"
+  });
+  next();
+});
 
 // Mount marketplace aggregator
 app.use('/api/marketplace', marketplaceRouter);
