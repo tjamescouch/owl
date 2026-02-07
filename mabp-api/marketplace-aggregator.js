@@ -22,7 +22,7 @@ function setCache(key, data, ttl = CACHE_TTL) {
 // AgentChat MCP client stub - in production, this would call actual MCP tools
 // For now, we'll use fetch to call the agentchat server directly or mock
 class AgentChatClient {
-  constructor(serverUrl = 'wss://agentchat-server.fly.dev') {
+  constructor(serverUrl = process.env.AGENTCHAT_URL || (process.env.AGENTCHAT_PUBLIC === 'true' ? 'wss://agentchat-server.fly.dev' : 'ws://localhost:6667')) {
     this.serverUrl = serverUrl;
     this.httpUrl = serverUrl.replace('wss://', 'https://').replace('ws://', 'http://');
   }

@@ -14,7 +14,8 @@ import WebSocket from 'ws';
 import crypto from 'crypto';
 
 // Configuration
-const AGENTCHAT_URL = process.env.AGENTCHAT_URL || 'wss://agentchat-server.fly.dev';
+const AGENTCHAT_PUBLIC = process.env.AGENTCHAT_PUBLIC === 'true';
+const AGENTCHAT_URL = process.env.AGENTCHAT_URL || (AGENTCHAT_PUBLIC ? 'wss://agentchat-server.fly.dev' : 'ws://localhost:6667');
 const DEFAULT_CHANNEL = '#build';
 
 // State
