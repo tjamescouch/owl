@@ -22,7 +22,20 @@ function setCache(key, data, ttl = CACHE_TTL) {
 // AgentChat MCP client stub - in production, this would call actual MCP tools
 // For now, we'll use fetch to call the agentchat server directly or mock
 class AgentChatClient {
-  constructor(serverUrl = process.env.AGENTCHAT_URL || (process.env.AGENTCHAT_PUBLIC === 'true' ? 'wss://agentchat-server.fly.dev' : 'ws://localhost:6667')) {
+  constructor(serverUrl = (() => {
+    const explicit = process.env.AGENTCHAT_URL;
+    if (explicit) {
+      const parsed = new URL(explicit);
+      const isLocal = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+      if (!isLocal && process.env.AGENTCHAT_PUBLIC !== 'true') {
+        console.error(`ERROR: AGENTCHAT_URL points to remote host "${parsed.hostname}" but AGENTCHAT_PUBLIC is not set.`);
+        console.error('Set AGENTCHAT_PUBLIC=true to allow connections to non-localhost servers.');
+        process.exit(1);
+      }
+      return explicit;
+    }
+    return process.env.AGENTCHAT_PUBLIC === 'true' ? 'wss://agentchat-server.fly.dev' : 'ws://localhost:6667';
+  })()) {
     this.serverUrl = serverUrl;
     this.httpUrl = serverUrl.replace('wss://', 'https://').replace('ws://', 'http://');
   }

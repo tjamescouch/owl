@@ -15,7 +15,20 @@ import crypto from 'crypto';
 
 // Configuration
 const AGENTCHAT_PUBLIC = process.env.AGENTCHAT_PUBLIC === 'true';
-const AGENTCHAT_URL = process.env.AGENTCHAT_URL || (AGENTCHAT_PUBLIC ? 'wss://agentchat-server.fly.dev' : 'ws://localhost:6667');
+const AGENTCHAT_URL = (() => {
+  const explicit = process.env.AGENTCHAT_URL;
+  if (explicit) {
+    const parsed = new URL(explicit);
+    const isLocal = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+    if (!isLocal && !AGENTCHAT_PUBLIC) {
+      console.error(`ERROR: AGENTCHAT_URL points to remote host "${parsed.hostname}" but AGENTCHAT_PUBLIC is not set.`);
+      console.error('Set AGENTCHAT_PUBLIC=true to allow connections to non-localhost servers.');
+      process.exit(1);
+    }
+    return explicit;
+  }
+  return AGENTCHAT_PUBLIC ? 'wss://agentchat-server.fly.dev' : 'ws://localhost:6667';
+})();
 const DEFAULT_CHANNEL = '#build';
 
 // State
