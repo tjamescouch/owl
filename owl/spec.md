@@ -157,6 +157,16 @@ if something is unclear, mark it: `[unclear: what does X mean?]`
 
 agents ask rather than guess.
 
+### implementation status
+
+specs should reflect reality. use bracket tags to mark gaps:
+
+- `[not-implemented: reason]` — spec'd but not yet built
+- `[partial: details]` — partially built, details explain what's missing
+- `[deprecated: reason]` — being removed, reason explains what replaces it
+
+these tags are greppable and consistent with `[unclear: ...]`. agents encountering these tags should note the gap rather than assuming the feature exists. do not silently implement `[not-implemented]` features without explicit instruction — the tag marks an acknowledged gap, not an implicit todo.
+
 ## parsing
 
 agents don't formally parse owl specs. they read and understand them.
