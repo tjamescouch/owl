@@ -1,0 +1,15 @@
+{
+  "name": "fintech-risk-assessment",
+  "version": "1.0.0",
+  "description": "Financial risk assessment tool",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "assess": "node index.js assess"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "jstat": "^1.3.2"
+  },
+  "keywords": ["risk", "fintech", "var"]
+}

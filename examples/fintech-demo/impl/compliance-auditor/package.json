@@ -1,0 +1,16 @@
+{
+  "name": "fintech-compliance-auditor",
+  "version": "1.0.0",
+  "description": "OWL compliance auditor for FinTech regs",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "audit": "node index.js"
+  },
+  "dependencies": {
+    "markdown-it": "^13.0.2",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/parser": "^7.8.0"
+  },
+  "keywords": ["owl", "compliance", "fintech"]
+}
