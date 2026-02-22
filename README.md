@@ -1,6 +1,6 @@
 # owl
 
-<img width="200" height="200" alt="Screenshot 2026-02-22 at 6 07 40 AM" src="https://github.com/user-attachments/assets/5841df51-db6c-42a0-b426-559f1ca406fb" />
+<img width="200" height="250" alt="Screenshot 2026-02-22 at 6 07 40 AM" src="https://github.com/user-attachments/assets/5841df51-db6c-42a0-b426-559f1ca406fb" />
 
 
 **A natural language declarative specification format for software.**
